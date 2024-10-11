@@ -48,7 +48,7 @@ function load() {
     canvas.height = (canvas.canvas.height = window.innerHeight);
     paint = canvas.canvas.getContext("2d");
     FOV = 300;
-    light = 100;
+    light = 50;
     
     // fill the screen
     screenInit(100);
@@ -59,14 +59,14 @@ function tick() {
     // code there execute on webpage tick
 
     // render triangle to pixels
-    position = {X: 50, Y: 50, Z:-300}
+    position = {X: 50, Y: 50, Z:-100}
     rotation = {A: 0, B:0}
     shapes = new Array;
 
     initTriangle([{X:0, Y:0, Z:100}, {X:0, Y:100, Z:100}, {X:100, Y:0, Z:100}], 
         [1, 1, 1], position, normaliseRotation(rotation));
     shapes.sort((a, b) => {return a[3] - b[3]});
-    rasteriseScreen();
+    initScreenColors();
     screenDraw();
 
 }
@@ -95,54 +95,11 @@ function initTriangle(points, color, position, direction) {
 }
 
 // Math functions used for ray calculations
-function normaliseRotation(rotation) {
-    return {A: rotation.A/180*Math.PI, B: rotation.B/180*Math.PI}
-}
-function sign(p1, p2, p3) {
-    return (p1.X - p3.X) * (p2.Y - p3.Y) - (p2.X - p3.X) * (p1.Y - p3.Y)
-}
-function crossProduct(a, b) {
-    return {X: (a.Y * b.Z - a.Z * b.Y), Y: (a.Z * b.X - a.X * b.Z), Z: (a.X * b.Y - a.Y * b.X)}
-}
-function vecSub(a, b) {
-    return {X: a.X - b.X, Y: a.Y - b.Y, Z: a.Z - b.Z}
-}
-function dotProduct(a, b) {
-    return (a.X * b.X) + (a.Y * b.Y) + (a.Z * b.Z)
-}
-
-function rasteriseScreen() {
-    let pixelCounter = 0;
-    screen.forEach(element => {
-        // check if it intersect with any triangle
-        screen[pixelCounter].color = "rgb(0 0 0)"
-        
-        shapes.forEach(points => {
-            
-            // define does point intersect with triangle or not
-            let d1 = sign(element, points[0], points[1]);
-            let d2 = sign(element, points[1], points[2]);
-            let d3 = sign(element, points[2], points[0]);
-            let has_neg = (d1 <= 0) || (d2 <= 0) || (d3 <= 0);
-            let has_pos = (d1 >= 0) || (d2 >= 0) || (d3 >= 0);
-            
-            if (!(has_neg && has_pos)) {
-                // raycast from diven pixel to given triangle
-                let distance = raycast(points[5], [{X: element.X/FOV, Y: element.Y/FOV, Z: 1}, {X: element.X/FOV, Y:element.X/FOV, Z:2}]);
-                
-                // calculate colors based on distance to triangle
-                if (distance) {
-
-                    screen[pixelCounter].color = "rgb(" + 
-                        points[4][0]*Math.min(1/distance*light, 1)*255 + " " + 
-                        points[4][1]*Math.min(1/distance*light, 1)*255 + " " + 
-                        points[4][2]*Math.min(1/distance*light, 1)*255 + ")";
-                }
-            }
-        });
-        pixelCounter++;
-    });
-}
+function normaliseRotation(rotation) { return {A: rotation.A/180*Math.PI, B: rotation.B/180*Math.PI} }
+function sign(p1, p2, p3) { return (p1.X - p3.X) * (p2.Y - p3.Y) - (p2.X - p3.X) * (p1.Y - p3.Y) }
+function crossProduct(a, b) { return {X: (a.Y * b.Z - a.Z * b.Y), Y: (a.Z * b.X - a.X * b.Z), Z: (a.X * b.Y - a.Y * b.X)} }
+function vecSub(a, b) { return {X: a.X - b.X, Y: a.Y - b.Y, Z: a.Z - b.Z} }
+function dotProduct(a, b) { return (a.X * b.X) + (a.Y * b.Y) + (a.Z * b.Z) }
 
 // calculation of distance to point of ray and plane intersection
 function raycast(points, ray) {  
@@ -150,4 +107,44 @@ function raycast(points, ray) {
     let t = (dotProduct(Pn, ray[0]) + dotProduct(points[0], Pn)) / Math.abs(dotProduct(Pn, ray[1]));
     if (t < 0) {return false}
     return t;
+}
+
+// calculate pixel color
+function pixel(element, pixelCounter) {
+    // start with pure black screen
+    screen[pixelCounter].color = "rgb(0 0 0)";
+
+    // check if it intersect with any triangle
+    shapes.forEach(points => {
+        
+        // define does point intersect with triangle or not
+        let d1 = sign(element, points[0], points[1]);
+        let d2 = sign(element, points[1], points[2]);
+        let d3 = sign(element, points[2], points[0]);
+        let has_neg = (d1 <= 0) || (d2 <= 0) || (d3 <= 0);
+        let has_pos = (d1 >= 0) || (d2 >= 0) || (d3 >= 0);
+        
+        if (has_neg && has_pos) {return false}
+        // raycast from diven pixel to given triangle
+        let distance = raycast(points[5], [{X: element.X/FOV, Y: element.Y/FOV, Z: 1}, {X: element.X/FOV, Y:element.X/FOV, Z:2}]);
+        
+        // return false if point is behind player
+        if (!distance) {return false}
+        
+        // calculate colors based on distance to triangle
+        screen[pixelCounter].color = "rgb(" + 
+            points[4][0]*Math.min(1/distance*light, 1)*255 + " " + 
+            points[4][1]*Math.min(1/distance*light, 1)*255 + " " + 
+            points[4][2]*Math.min(1/distance*light, 1)*255 + ")";
+    });
+}
+
+function initScreenColors() {
+    let pixelCounter = 0;
+    
+    // get color for every pixel
+    screen.forEach(element => {
+        pixel(element, pixelCounter)
+        pixelCounter++;
+    });
 }
