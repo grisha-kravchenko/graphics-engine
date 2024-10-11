@@ -13,23 +13,25 @@ function tickInit(delay) {
 
 function screenInit(width) {
     screen = new Array
-    for (let pixelX = 0; pixelX < width - 1; pixelX++) {
-            for (let pixelY = 0; pixelY < width - 1; pixelY++) {
+    for (let pixelX = 0; pixelX < width; pixelX++) {
+            for (let pixelY = 0; pixelY < width; pixelY++) {
             screen[screen.length] = {
                 color:"rgb(0 0 0)",
                 sizeX: canvas.width/width,
                 sizeY: canvas.height/width,
-                X: pixelX*canvas.width/width-canvas.width/2,
-                Y: pixelY*canvas.height/width-canvas.height/2,
+                X: pixelX - width/2,
+                Y: pixelY - width/2,
+                screenX: pixelX*canvas.width/width-canvas.width/2,
+                screenY:pixelY*canvas.height/width-canvas.height/2,
             };
         }
     }
 }
 
 function screenDraw() {
-    screen.forEach(element => {
-        paint.fillStyle = element.color;
-        paint.fillRect(element.X + canvas.width/2, element.Y + canvas.height/2, element.sizeX, element.sizeY);
+    screen.forEach(pixel => {
+        paint.fillStyle = pixel.color;
+        paint.fillRect(pixel.screenX + canvas.width/2, pixel.screenY + canvas.height/2, pixel.sizeX, pixel.sizeY);
     });
 }
 
@@ -42,7 +44,7 @@ function load() {
     canvas.width = (canvas.canvas.width = window.innerWidth);
     canvas.height = (canvas.canvas.height = window.innerHeight);
     paint = canvas.canvas.getContext("2d");
-    FOV = 300;
+    FOV = 100;
     light = 50;
     
     // fill the screen
