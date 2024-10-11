@@ -1,20 +1,22 @@
 
 // Main code file for 3d engine project
 
-// tick logic initialiser
+// sleep function on Promise
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+// tick logic
 function tickInit(delay) {
     tick();
     sleep(delay).then(() => tickInit(delay));
 }
 
+// screen initialiser
 function screenInit(width) {
     screen = new Array
     for (let pixelX = 0; pixelX < width; pixelX++) {
-            for (let pixelY = 0; pixelY < width; pixelY++) {
+        for (let pixelY = 0; pixelY < width; pixelY++) {
             screen[screen.length] = {
                 color:"rgb(0 0 0)",
                 sizeX: canvas.width/width,
@@ -28,6 +30,7 @@ function screenInit(width) {
     }
 }
 
+// fill screen function
 function screenDraw() {
     screen.forEach(pixel => {
         paint.fillStyle = pixel.color;
@@ -102,7 +105,7 @@ function raycast(points, ray) {
 }
 
 // calculate pixel color
-function pixel(element, pixelCounter) {
+function initialisePixelColor(element, pixelCounter) {
     // start with pure black screen
     screen[pixelCounter].color = "rgb(0 0 0)";
 
@@ -117,18 +120,38 @@ function pixel(element, pixelCounter) {
         let has_pos = (d1 >= 0) || (d2 >= 0) || (d3 >= 0);
         
         if (has_neg && has_pos) {return false}
+
         // raycast from diven pixel to given triangle
-        let distance = raycast(points[5], [{X: element.X/FOV, Y: element.Y/FOV, Z: 1}, {X: element.X/FOV, Y:element.X/FOV, Z:2}]);
+        let distance = raycast(points[5], [
+            {X: element.X / FOV, Y: element.Y / FOV, Z: 1}, 
+            {X: element.X / FOV*2, Y:element.Y / FOV*2, Z:2}
+        ]);
         
         // return false if point is behind player
         if (!distance) {return false}
         
-        // calculate colors based on distance to triangle
-        screen[pixelCounter].color = "rgb(" + 
-            points[4][0]*Math.min(1/distance*light, 1)*255 + " " + 
-            points[4][1]*Math.min(1/distance*light, 1)*255 + " " + 
-            points[4][2]*Math.min(1/distance*light, 1)*255 + ")";
+        // calculate colors based on point of intersection with triangle
+        let color = applyTexture(points, distance, points[4], element);
+        
+        // apply color to pixel
+        screen[pixelCounter].color = "rgb(" + color[0]+ " " + color[1] + " " + color[2]+ ")";
     });
+}
+
+function applyTexture(points, distance, texture, pixel) {
+
+    // calculate point of intersection of ray and 
+    let intersection = {
+        X: pixel.X / FOV * distance + pixel.X / FOV,
+        Y: pixel.Y / FOV * distance + pixel.Y / FOV,
+        Z: pixel.Z / FOV * distance + pixel.Z / FOV,
+    }
+    
+    return [
+        texture[0] * Math.min(1 / distance * light, 1) * 255,
+        texture[1] * Math.min(1 / distance * light, 1) * 255,
+        texture[2] * Math.min(1 / distance * light, 1) * 255
+    ]
 }
 
 function initScreenColors() {
@@ -136,7 +159,7 @@ function initScreenColors() {
     
     // get color for every pixel
     screen.forEach(element => {
-        pixel(element, pixelCounter)
+        initialisePixelColor(element, pixelCounter)
         pixelCounter++;
     });
 }
