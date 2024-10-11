@@ -49,6 +49,7 @@ function load() {
     paint = canvas.canvas.getContext("2d");
     FOV = 100;
     light = 50;
+    maxViewDistance = 1000;
     
     // fill the screen
     screenInit(100);
@@ -106,6 +107,8 @@ function raycast(points, ray) {
 
 // calculate pixel color
 function initialisePixelColor(element, pixelCounter) {
+    let pixelDistance = maxViewDistance
+
     // start with pure black screen
     screen[pixelCounter].color = "rgb(0 0 0)";
 
@@ -129,9 +132,10 @@ function initialisePixelColor(element, pixelCounter) {
         
         // return false if point is behind player
         if (!distance) {return false}
-        
+        if (distance > pixelDistance) {return false}
+
         // calculate colors based on point of intersection with triangle
-        let color = applyTexture(points, distance, points[4], element);
+        let color = applyTexture(points[5], distance, points[4], element);
         
         // apply color to pixel
         screen[pixelCounter].color = "rgb(" + color[0]+ " " + color[1] + " " + color[2]+ ")";
@@ -146,7 +150,11 @@ function applyTexture(points, distance, texture, pixel) {
         Y: pixel.Y / FOV * distance + pixel.Y / FOV,
         Z: pixel.Z / FOV * distance + pixel.Z / FOV,
     }
-    
+
+    // calcutlate texture coordinates
+    let textureX = perpendicularLength(points[0], points[1], intersection)
+    let textureY = perpendicularLength(points[0], trianglePerpendicular(points[0], points[1], points[2]), intersection)
+
     return [
         texture[0] * Math.min(1 / distance * light, 1) * 255,
         texture[1] * Math.min(1 / distance * light, 1) * 255,
