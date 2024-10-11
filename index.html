@@ -4,9 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
+    <script src="graphics-math.js"></script>
+    <script src="code.js"></script>
 </head>
 <body>
     <canvas id="mainCanvas"></canvas>
-    <script src="code.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", load);
+        tickInit(1000/60);
+    </script>
 </body>
 </html>
