@@ -107,7 +107,7 @@ function initTriangle(points, color, position, direction) {
         // rotate points
         let rotatedX = (element.Z - position.Z) * Math.sin(-direction.A) + (element.X - position.X) * Math.cos(direction.A);
         let rotatedZ = (element.Z - position.Z) * Math.cos(direction.A) - (element.X - position.X) * Math.sin(-direction.A);
-        let rotatedY = (element.Z - position.Z) * Math.sin(direction.B) + (element.Y - position.Y) * Math.cos(direction.B);
+        let rotatedY = rotatedZ * Math.sin(direction.B) + (element.Y - position.Y) * Math.cos(direction.B);
         rotatedZ = rotatedZ * Math.cos(direction.B) - rotatedZ * Math.sin(direction.B);
         
         // write points
