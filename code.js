@@ -25,6 +25,7 @@ function screenInit(width) {
                 Y: pixelY - width/2,
                 screenX: pixelX*canvas.width/width-canvas.width/2,
                 screenY:pixelY*canvas.height/width-canvas.height/2,
+                screenWidth: width,
             };
         }
     }
@@ -38,6 +39,7 @@ function screenDraw() {
     });
 }
 
+
 function load() {
     // code there executes on webpage load
 
@@ -48,8 +50,25 @@ function load() {
     canvas.height = (canvas.canvas.height = window.innerHeight);
     paint = canvas.canvas.getContext("2d");
     FOV = 100;
-    light = 50;
+    light = 100;
     maxViewDistance = 1000;
+    position = {X: 50, Y: 50, Z: -100}
+    rotation = {A: 0, B: 0}
+    speed = 5
+    rotationIntensivity = 2
+    pressedKeys = {w: 0, a: 0, s: 0, d: 0, ArrowRight: 0, ArrowLeft: 0, ArrowUp: 0, ArrowDown: 0}
+
+    document.addEventListener("keydown", function (event) {
+        if (event.defaultPrevented) { return }
+        if (!event.key) { return }
+        pressedKeys[event.key] = 1
+    });
+
+    document.addEventListener("keyup", function (event) {
+        if (event.defaultPrevented) { return }
+        if (!event.key) { return }
+        pressedKeys[event.key] = 0
+    });
     
     // fill the screen
     screenInit(100);
@@ -59,9 +78,9 @@ function load() {
 function tick() {
     // code there execute on webpage tick
 
+    movement(normaliseRotation(rotation))
+
     // render triangle to pixels
-    position = {X: 50, Y: 50, Z:-100}
-    rotation = {A: 0, B:0}
     shapes = new Array;
 
     initTriangle([{X:0, Y:0, Z:100}, {X:0, Y:100, Z:100}, {X:100, Y:0, Z:100}], 
@@ -72,6 +91,13 @@ function tick() {
 
 }
 
+function movement(normal_rotation) {
+    position.Z += speed * (pressedKeys.w - pressedKeys.s) * Math.cos(normal_rotation.A) + speed * (pressedKeys.a - pressedKeys.d) * Math.sin(normal_rotation.A)
+    position.X += speed * (pressedKeys.d - pressedKeys.a) * Math.cos(normal_rotation.A) + speed * (pressedKeys.w - pressedKeys.s) * Math.sin(normal_rotation.A)
+    rotation.A += rotationIntensivity * (pressedKeys.ArrowRight - pressedKeys.ArrowLeft)
+    rotation.B += rotationIntensivity * (pressedKeys.ArrowUp - pressedKeys.ArrowDown)
+}
+
 function initTriangle(points, color, position, direction) {
     // Points - array with all used points in the Triangle
     shapes[shapes.length] = new Array
@@ -79,16 +105,17 @@ function initTriangle(points, color, position, direction) {
     points.forEach(element => {
         
         // rotate points
-        let rotatedX = (element.Z - position.Z) * Math.sin(direction.A) + (element.X - position.X) * Math.cos(direction.A);
-        let rotatedZ = (element.Z - position.Z) * Math.cos(direction.A) - (element.X - position.X) * Math.sin(direction.A);
+        let rotatedX = (element.Z - position.Z) * Math.sin(-direction.A) + (element.X - position.X) * Math.cos(direction.A);
+        let rotatedZ = (element.Z - position.Z) * Math.cos(direction.A) - (element.X - position.X) * Math.sin(-direction.A);
         let rotatedY = (element.Z - position.Z) * Math.sin(direction.B) + (element.Y - position.Y) * Math.cos(direction.B);
-        rotatedZ = (element.Z - position.Z) * Math.cos(direction.B) - (element.Y - position.Y) * Math.sin(direction.B);
+        rotatedZ = rotatedZ * Math.cos(direction.B) - rotatedZ * Math.sin(direction.B);
         
         // write points
         shapes[shapes.length - 1].push({X: rotatedX/rotatedZ * FOV, Y: rotatedY/rotatedZ * FOV, distance: rotatedZ});
         trianglePoints.push({X: rotatedX, Y: rotatedY, Z: rotatedZ})
         
     });
+
     // distance to triangle based on 3 points
     shapes[shapes.length - 1].push((shapes[shapes.length - 1][0].distance + shapes[shapes.length - 1][1].distance + shapes[shapes.length - 1][2].distance) / 3)
     shapes[shapes.length - 1].push(color)
@@ -99,8 +126,8 @@ function initTriangle(points, color, position, direction) {
 
 // calculation of distance to point of ray and plane intersection
 function raycast(points, ray) {  
-    let Pn = crossProduct(vecSub(points[2], points[0]), vecSub(points[1], points[0]));
-    let t = (dotProduct(Pn, ray[0]) + dotProduct(points[0], Pn)) / Math.abs(dotProduct(Pn, ray[1]));
+    let Pn = normaliseVector(crossProduct(vecSub(points[1], points[0]), vecSub(points[2], points[0])));
+    let t = - dotProduct(Pn, vecSub(ray[0], points[0])) / dotProduct(Pn, ray[1])
     if (t < 0) {return false}
     return t;
 }
@@ -124,10 +151,10 @@ function initialisePixelColor(element, pixelCounter) {
         
         if (has_neg && has_pos) {return false}
 
-        // raycast from diven pixel to given triangle
+        // raycast from given pixel to given triangle
         let distance = raycast(points[5], [
             {X: element.X / FOV, Y: element.Y / FOV, Z: 1}, 
-            {X: element.X / FOV*2, Y:element.Y / FOV*2, Z:2}
+            {X: element.X * 2 / FOV, Y: element.Y * 2 / FOV, Z: 2}
         ]);
         
         // return false if point is behind player
@@ -146,14 +173,14 @@ function applyTexture(points, distance, texture, pixel) {
 
     // calculate point of intersection of ray and 
     let intersection = {
-        X: pixel.X / FOV * distance + pixel.X / FOV,
-        Y: pixel.Y / FOV * distance + pixel.Y / FOV,
-        Z: pixel.Z / FOV * distance + pixel.Z / FOV,
+        X: Math.round(pixel.X * distance / FOV * 2),
+        Y: Math.round(pixel.Y * distance / FOV * 2),
+        Z: distance * 2,
     }
 
     // calcutlate texture coordinates
-    let textureX = perpendicularLength(points[0], points[1], intersection)
-    let textureY = perpendicularLength(points[0], trianglePerpendicular(points[0], points[1], points[2]), intersection)
+    let textureX = Math.round(perpendicularLength(points[0], points[1], intersection))
+    let textureY = Math.round(perpendicularLength(trianglePerpendicular(points[0], points[2], points[1]), points[0], intersection))
 
     return [
         texture[0] * Math.min(1 / distance * light, 1) * 255,
