@@ -54,22 +54,7 @@ function load() {
     maxViewDistance = 1000;
     position = {X: 50, Y: 50, Z: -100}
     rotation = {A: 0, B: 0}
-    speed = 5
-    rotationIntensivity = 2
-    pressedKeys = {w: 0, a: 0, s: 0, d: 0, ArrowRight: 0, ArrowLeft: 0, ArrowUp: 0, ArrowDown: 0}
 
-    document.addEventListener("keydown", function (event) {
-        if (event.defaultPrevented) { return }
-        if (!event.key) { return }
-        pressedKeys[event.key] = 1
-    });
-
-    document.addEventListener("keyup", function (event) {
-        if (event.defaultPrevented) { return }
-        if (!event.key) { return }
-        pressedKeys[event.key] = 0
-    });
-    
     // fill the screen
     screenInit(100);
     
@@ -78,27 +63,22 @@ function load() {
 function tick() {
     // code there execute on webpage tick
 
-    movement(normaliseRotation(rotation))
-
     // render triangle to pixels
     shapes = new Array;
 
     initTriangle([{X:0, Y:0, Z:100}, {X:0, Y:100, Z:100}, {X:100, Y:0, Z:100}], 
-        [1, 1, 1], position, normaliseRotation(rotation));
+        ["bricks", true], position, normaliseRotation(rotation));
+    initTriangle([{X:100, Y:100, Z:100}, {X:0, Y:100, Z:100}, {X:100, Y:0, Z:100}], 
+        ["bricks", false], position, normaliseRotation(rotation));
     shapes.sort((a, b) => {return a[3] - b[3]});
     initScreenColors();
     screenDraw();
 
 }
 
-function movement(normal_rotation) {
-    position.Z += speed * (pressedKeys.w - pressedKeys.s) * Math.cos(normal_rotation.A) + speed * (pressedKeys.a - pressedKeys.d) * Math.sin(normal_rotation.A)
-    position.X += speed * (pressedKeys.d - pressedKeys.a) * Math.cos(normal_rotation.A) + speed * (pressedKeys.w - pressedKeys.s) * Math.sin(normal_rotation.A)
-    rotation.A += rotationIntensivity * (pressedKeys.ArrowRight - pressedKeys.ArrowLeft)
-    rotation.B += rotationIntensivity * (pressedKeys.ArrowUp - pressedKeys.ArrowDown)
-}
 
-function initTriangle(points, color, position, direction) {
+
+function initTriangle(points, texture, position, direction) {
     // Points - array with all used points in the Triangle
     shapes[shapes.length] = new Array
     let trianglePoints = new Array
@@ -107,7 +87,7 @@ function initTriangle(points, color, position, direction) {
         // rotate points
         let rotatedX = (element.Z - position.Z) * Math.sin(-direction.A) + (element.X - position.X) * Math.cos(direction.A);
         let rotatedZ = (element.Z - position.Z) * Math.cos(direction.A) - (element.X - position.X) * Math.sin(-direction.A);
-        let rotatedY = rotatedZ * Math.sin(direction.B) + (element.Y - position.Y) * Math.cos(direction.B);
+        let rotatedY = rotatedZ * Math.sin(direction.B) - (element.Y - position.Y) * Math.cos(direction.B);
         rotatedZ = rotatedZ * Math.cos(direction.B) - rotatedZ * Math.sin(direction.B);
         
         // write points
@@ -118,7 +98,7 @@ function initTriangle(points, color, position, direction) {
 
     // distance to triangle based on 3 points
     shapes[shapes.length - 1].push((shapes[shapes.length - 1][0].distance + shapes[shapes.length - 1][1].distance + shapes[shapes.length - 1][2].distance) / 3)
-    shapes[shapes.length - 1].push(color)
+    shapes[shapes.length - 1].push(texture)
     shapes[shapes.length - 1].push(trianglePoints)
 }
 
@@ -127,8 +107,10 @@ function initTriangle(points, color, position, direction) {
 // calculation of distance to point of ray and plane intersection
 function raycast(points, ray) {  
     let Pn = normaliseVector(crossProduct(vecSub(points[1], points[0]), vecSub(points[2], points[0])));
-    let t = - dotProduct(Pn, vecSub(ray[0], points[0])) / dotProduct(Pn, ray[1])
-    if (t < 0) {return false}
+    let Vd = dotProduct(Pn, ray[1])
+    if (Math.abs(Vd) < 0.0001) {return false} // ray is parallel to the plane
+    let t = - dotProduct(Pn, vecSub(ray[0], points[0])) / Vd
+    if (t < 0) {return false} // intersection is behind player
     return t;
 }
 
@@ -169,7 +151,7 @@ function initialisePixelColor(element, pixelCounter) {
     });
 }
 
-function applyTexture(points, distance, texture, pixel) {
+function applyTexture(points, distance, textureId, pixel) {
 
     // calculate point of intersection of ray and 
     let intersection = {
@@ -179,14 +161,28 @@ function applyTexture(points, distance, texture, pixel) {
     }
 
     // calcutlate texture coordinates
-    let textureX = Math.round(perpendicularLength(points[0], points[1], intersection))
-    let textureY = Math.round(perpendicularLength(trianglePerpendicular(points[0], points[2], points[1]), points[0], intersection))
+    let texture = getTexture(textureId[0]) 
+    let textureX = Math.floor(Math.round(perpendicularLength(points[0], points[1], intersection)) / magnitude(vecSub(points[1], points[0])) * texture[0].resolutionX)
+    let perpendicular = vecAdd(trianglePerpendicular(points[0], points[2], points[1]), points[0])
+    let textureY = Math.floor(Math.round(perpendicularLength(perpendicular, points[0], intersection)) / perpendicularLength(points[0], points[1], points[2]) * texture[0].resolutionY) + 1
+    if (textureId[1] == true) { 
+        textureX = texture[0].resolutionX - textureX - 1;
+        textureY = texture[0].resolutionY - textureY + 1; 
+    } else {
+        let k = textureX
+        textureX = textureY - 1
+        textureY = k + 1
+    }
 
-    return [
-        texture[0] * Math.min(1 / distance * light, 1) * 255,
-        texture[1] * Math.min(1 / distance * light, 1) * 255,
-        texture[2] * Math.min(1 / distance * light, 1) * 255
-    ]
+    try {
+        return [
+            texture[0].colors[texture[textureY][textureX]][0] * Math.min(1 / distance * light, 1),
+            texture[0].colors[texture[textureY][textureX]][1] * Math.min(1 / distance * light, 1),
+            texture[0].colors[texture[textureY][textureX]][2] * Math.min(1 / distance * light, 1)
+        ]
+    } catch (error) {
+        return [0, 0, 0]
+    }
 }
 
 function initScreenColors() {

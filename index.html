@@ -4,14 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
+    <script src="textures.js"></script>
     <script src="graphics-math.js"></script>
+    <script src="physics.js"></script>
     <script src="code.js"></script>
 </head>
 <body>
     <canvas id="mainCanvas" style="overflow-y: scroll; top: 0; right: 0; height: 100%; position: fixed;"></canvas>
     <script>
         document.addEventListener("DOMContentLoaded", load);
-        load()
+        load();
+        physicsLoad();
+        physicsTick(25);
         tickInit(1000/60);
     </script>
 </body>
