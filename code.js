@@ -13,19 +13,20 @@ function tickInit(delay) {
 }
 
 // screen initialiser
-function screenInit(width) {
+function screenInit(width, height) {
     screen = new Array
     for (let pixelX = 0; pixelX < width; pixelX++) {
-        for (let pixelY = 0; pixelY < width; pixelY++) {
+        for (let pixelY = 0; pixelY < height; pixelY++) {
             screen[screen.length] = {
                 color:"rgb(0 0 0)",
                 sizeX: canvas.width/width,
-                sizeY: canvas.height/width,
+                sizeY: canvas.height/height,
                 X: pixelX - width/2,
-                Y: pixelY - width/2,
+                Y: pixelY - height/2,
                 screenX: pixelX*canvas.width/width-canvas.width/2,
-                screenY:pixelY*canvas.height/width-canvas.height/2,
+                screenY:pixelY*canvas.height/height-canvas.height/2,
                 screenWidth: width,
+                screenHeight: height,
             };
         }
     }
@@ -56,7 +57,7 @@ function load() {
     rotation = {A: 0, B: -20}
 
     // fill the screen
-    screenInit(100);
+    screenInit(240, 180);
     
 }
 
@@ -162,16 +163,16 @@ function applyTexture(points, distance, textureId, pixel) {
 
     // calcutlate texture coordinates
     let texture = getTexture(textureId[0]) 
-    let textureX = Math.floor(Math.round(perpendicularLength(points[0], points[1], intersection)) / magnitude(vecSub(points[1], points[0])) * texture[0].resolutionX)
+    let textureX = Math.round(perpendicularLength(points[0], points[1], intersection)) / magnitude(vecSub(points[1], points[0]))
     let perpendicular = vecAdd(trianglePerpendicular(points[0], points[2], points[1]), points[0])
-    let textureY = Math.floor(Math.round(perpendicularLength(perpendicular, points[0], intersection)) / perpendicularLength(points[0], points[1], points[2]) * texture[0].resolutionY) + 1
+    let textureY = Math.round(perpendicularLength(perpendicular, points[0], intersection)) / perpendicularLength(points[0], points[1], points[2])
     if (textureId[1] == true) { 
-        textureX = texture[0].resolutionX - textureX - 1;
-        textureY = textureY; 
+        textureX = Math.floor((1 - textureX) * texture[0].resolutionX);
+        textureY = Math.floor(textureY * texture[0].resolutionY) + 1;
     } else {
         let k = textureX
-        textureX = textureY - 1;
-        textureY = texture[0].resolutionY - k;
+        textureX = Math.floor(textureY * texture[0].resolutionX);
+        textureY = Math.floor((1 - k) * texture[0].resolutionY) + 1;
     }
 
     try {
