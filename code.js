@@ -101,6 +101,12 @@ function initTriangle(points, texture, position, direction) {
     shapes[shapes.length - 1].push((shapes[shapes.length - 1][0].distance + shapes[shapes.length - 1][1].distance + shapes[shapes.length - 1][2].distance) / 3)
     shapes[shapes.length - 1].push(texture)
     shapes[shapes.length - 1].push(trianglePoints)
+    shapes[shapes.length - 1].push({
+        minX: Math.min(shapes[shapes.length - 1][0].X, shapes[shapes.length - 1][1].X, shapes[shapes.length - 1][2].X),
+        minY: Math.min(shapes[shapes.length - 1][0].Y, shapes[shapes.length - 1][1].Y, shapes[shapes.length - 1][2].Y),
+        maxX: Math.max(shapes[shapes.length - 1][0].X, shapes[shapes.length - 1][1].X, shapes[shapes.length - 1][2].X),
+        maxY: Math.max(shapes[shapes.length - 1][0].Y, shapes[shapes.length - 1][1].Y, shapes[shapes.length - 1][2].Y)
+    })
 }
 
 
@@ -115,40 +121,43 @@ function raycast(points, ray) {
     return t;
 }
 
+function triangle(element, points, pixelCounter) {
+    if ((element.X < points[6].minX) || (element.X > points[6].maxX) || (element.Y < points[6].minY) || (element.Y > points[6].maxY)) {return false}
+
+    // define does point intersect with triangle or not
+    let d1 = sign(element, points[0], points[1]);
+    let d2 = sign(element, points[1], points[2]);
+    let d3 = sign(element, points[2], points[0]);
+    let has_neg = (d1 <= 0) || (d2 <= 0) || (d3 <= 0);
+    let has_pos = (d1 >= 0) || (d2 >= 0) || (d3 >= 0);
+    
+    if (has_neg && has_pos) {return false}
+
+    // raycast from given pixel to given triangle
+    let distance = raycast(points[5], [
+        {X: element.X / FOV, Y: element.Y / FOV, Z: 1}, 
+        {X: element.X * 2 / FOV, Y: element.Y * 2 / FOV, Z: 2}
+    ]);
+    
+    // return false if point is behind player
+    if (!distance) {return false}
+
+    // calculate colors based on point of intersection with triangle
+    let color = applyTexture(points[5], distance, points[4], element);
+    
+    // apply color to pixel
+    screen[pixelCounter].color = "rgb(" + color[0]+ " " + color[1] + " " + color[2]+ ")";
+}
+
 // calculate pixel color
 function initialisePixelColor(element, pixelCounter) {
-    let pixelDistance = maxViewDistance
 
     // start with pure black screen
     screen[pixelCounter].color = "rgb(0 0 0)";
 
     // check if it intersect with any triangle
     shapes.forEach(points => {
-        
-        // define does point intersect with triangle or not
-        let d1 = sign(element, points[0], points[1]);
-        let d2 = sign(element, points[1], points[2]);
-        let d3 = sign(element, points[2], points[0]);
-        let has_neg = (d1 <= 0) || (d2 <= 0) || (d3 <= 0);
-        let has_pos = (d1 >= 0) || (d2 >= 0) || (d3 >= 0);
-        
-        if (has_neg && has_pos) {return false}
-
-        // raycast from given pixel to given triangle
-        let distance = raycast(points[5], [
-            {X: element.X / FOV, Y: element.Y / FOV, Z: 1}, 
-            {X: element.X * 2 / FOV, Y: element.Y * 2 / FOV, Z: 2}
-        ]);
-        
-        // return false if point is behind player
-        if (!distance) {return false}
-        if (distance > pixelDistance) {return false}
-
-        // calculate colors based on point of intersection with triangle
-        let color = applyTexture(points[5], distance, points[4], element);
-        
-        // apply color to pixel
-        screen[pixelCounter].color = "rgb(" + color[0]+ " " + color[1] + " " + color[2]+ ")";
+        triangle(element, points, pixelCounter)
     });
 }
 

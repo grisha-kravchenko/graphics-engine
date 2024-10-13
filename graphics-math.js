@@ -9,3 +9,4 @@ function magnitude(a) { return Math.sqrt(a.X ** 2 + a.Y ** 2 + a.Z ** 2) }
 function trianglePerpendicular(a, b, c) { return crossProduct(crossProduct(vecSub(b, a), vecSub(c, a)), vecSub(c, a)) }
 function perpendicularLength(a, b, p) { let cross = magnitude(crossProduct(vecSub(p, a), vecSub(b, a))); let dir = magnitude(vecSub(b, a)); return (cross / dir) }
 function normaliseVector(a) { return {X: a.X / magnitude(a), Y: a.Y / magnitude(a), Z: a.Z / magnitude(a)} }
+function area(a, b, c) { return 0.5 * Math.abs(a.X * (b.Y - c.Y) + b.X * (c.Y - a.Y) + c.X * (a.Y - b.Y)) }
