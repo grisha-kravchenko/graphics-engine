@@ -3,8 +3,8 @@ function movement(normal_rotation) {
     position.X += physicsConsts("speed") * (pressedKeys.d - pressedKeys.a) * Math.cos(normal_rotation.A) + physicsConsts("speed") * (pressedKeys.w - pressedKeys.s) * Math.sin(normal_rotation.A)
     rotation.A += physicsConsts("rotationIntensivity") * (pressedKeys.ArrowRight - pressedKeys.ArrowLeft)
     rotation.B += physicsConsts("rotationIntensivity") * (pressedKeys.ArrowUp - pressedKeys.ArrowDown)
-    if (position.Y == 20) {speedY = 20 * pressedKeys[" "]} else {speedY -= physicsConsts("gravity")}
-    position.Y = Math.max(20, position.Y + speedY)
+    if (position.Y == physicsConsts("groundheight")) {speedY = 20 * pressedKeys[" "]} else {speedY -= physicsConsts("gravity")}
+    position.Y = Math.max(physicsConsts("groundheight"), position.Y + speedY)
 }
 
 function physicsLoad() {
@@ -27,7 +27,7 @@ function physicsConsts(cons) {
         speed: 5,
         rotationIntensivity: 2,
         gravity: 1.5,
-        groundheight: 50,
+        groundheight: 100,
     }
 
     return consts[cons]

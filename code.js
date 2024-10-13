@@ -53,7 +53,7 @@ function load() {
     light = 100;
     maxViewDistance = 1000;
     position = {X: 50, Y: 50, Z: -100}
-    rotation = {A: 0, B: 0}
+    rotation = {A: 0, B: -20}
 
     // fill the screen
     screenInit(100);
@@ -66,9 +66,9 @@ function tick() {
     // render triangle to pixels
     shapes = new Array;
 
-    initTriangle([{X:0, Y:0, Z:100}, {X:0, Y:100, Z:100}, {X:100, Y:0, Z:100}], 
+    initTriangle([{X:0, Y:0, Z:0}, {X:0, Y:0, Z:100}, {X:100, Y:0, Z:0}], 
         ["bricks", true], position, normaliseRotation(rotation));
-    initTriangle([{X:100, Y:100, Z:100}, {X:0, Y:100, Z:100}, {X:100, Y:0, Z:100}], 
+    initTriangle([{X:100, Y:0, Z:100}, {X:0, Y:0, Z:100}, {X:100, Y:0, Z:0}], 
         ["bricks", false], position, normaliseRotation(rotation));
     shapes.sort((a, b) => {return a[3] - b[3]});
     initScreenColors();
@@ -87,8 +87,8 @@ function initTriangle(points, texture, position, direction) {
         // rotate points
         let rotatedX = (element.Z - position.Z) * Math.sin(-direction.A) + (element.X - position.X) * Math.cos(direction.A);
         let rotatedZ = (element.Z - position.Z) * Math.cos(direction.A) - (element.X - position.X) * Math.sin(-direction.A);
-        let rotatedY = rotatedZ * Math.sin(direction.B) - (element.Y - position.Y) * Math.cos(direction.B);
-        rotatedZ = rotatedZ * Math.cos(direction.B) - rotatedZ * Math.sin(direction.B);
+        let rotatedY = rotatedZ * Math.sin(direction.B) + (element.Y + position.Y) * Math.cos(direction.B);
+        rotatedZ = rotatedZ * Math.cos(direction.B) - (element.Y + position.Y) * Math.sin(direction.B);
         
         // write points
         shapes[shapes.length - 1].push({X: rotatedX/rotatedZ * FOV, Y: rotatedY/rotatedZ * FOV, distance: rotatedZ});
@@ -167,11 +167,11 @@ function applyTexture(points, distance, textureId, pixel) {
     let textureY = Math.floor(Math.round(perpendicularLength(perpendicular, points[0], intersection)) / perpendicularLength(points[0], points[1], points[2]) * texture[0].resolutionY) + 1
     if (textureId[1] == true) { 
         textureX = texture[0].resolutionX - textureX - 1;
-        textureY = texture[0].resolutionY - textureY + 1; 
+        textureY = textureY; 
     } else {
         let k = textureX
-        textureX = textureY - 1
-        textureY = k + 1
+        textureX = textureY - 1;
+        textureY = texture[0].resolutionY - k;
     }
 
     try {
