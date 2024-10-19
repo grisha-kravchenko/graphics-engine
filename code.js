@@ -1,206 +1,119 @@
 
-// Main code file for 3d engine project
+function graphics_Load() {
 
-// sleep function on Promise
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms))
+    // initialise screen graphics
+    canvas = document.getElementById("MainCanvas");
+    ctx = canvas.getContext("2d");
+    screen = new Array;
+    resize();
+    window.onresize = resize;
+
+    // initialise constants and important variables
+    FOV = 100
+    position = {X: 50, Y: 50, Z: -100}
+    rotation = {A: 160, B: -90}
 }
 
-// tick logic
-function tickInit(delay) {
-    tick();
-    sleep(delay).then(() => tickInit(delay));
+function graphics_Tick(fps) {
+    renderScreen(position, transformRotation(rotation));
+    drawScreen();
+    //sleep(1000/fps).then(() => graphicsTick(fps))
 }
 
-// screen initialiser
-function screenInit(width, height) {
-    screen = new Array
-    for (let pixelX = 0; pixelX < width; pixelX++) {
-        for (let pixelY = 0; pixelY < height; pixelY++) {
-            screen[screen.length] = {
-                color:"rgb(0 0 0)",
-                sizeX: canvas.width/width,
-                sizeY: canvas.height/height,
-                X: pixelX - width/2,
-                Y: pixelY - height/2,
-                screenX: pixelX*canvas.width/width-canvas.width/2,
-                screenY:pixelY*canvas.height/height-canvas.height/2,
-                screenWidth: width,
-                screenHeight: height,
-            };
+
+const sleep = (ms) => {return new Promise(resolve => setTimeout(resolve, ms))}
+
+const initialiseScreen = (width, height, window, windowWidth, windowHeight) => {
+    // add pixels to screen
+    for (let pixelX = 0; pixelX <= width; pixelX++) {
+        for (let pixelY = 0; pixelY <= height; pixelY++) {
+            screen.push({
+                X: pixelX - width / 2,
+                Y: pixelY - height / 2,
+                screenX: pixelX * window / width + (windowWidth - window) / 2,
+                screenY: pixelY * window / height + (windowHeight - window) / 2,
+                sizeX: window / width + 1,
+                sizeY: window / height + 1,
+                color: "rgb(" + Math.random()*255 + " " + Math.random()*255 + " " + Math.random()*255 + ")"
+            })
         }
     }
 }
 
-// fill screen function
-function screenDraw() {
+const drawScreen = () => {
     screen.forEach(pixel => {
-        paint.fillStyle = pixel.color;
-        paint.fillRect(pixel.screenX + canvas.width/2, pixel.screenY + canvas.height/2, pixel.sizeX, pixel.sizeY);
+        ctx.fillStyle = pixel.color
+        ctx.fillRect(pixel.screenX, pixel.screenY, pixel.screenX + pixel.sizeX, pixel.screenY + pixel.sizeY)
     });
 }
 
+const resize = () => {
+    canvas.width = Math.min(window.innerWidth, window.innerHeight);
+    canvas.height = Math.min(window.innerWidth, window.innerHeight);
+    ctx.fillStyle = "rgb(255 255 255)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    initialiseScreen(50, 50, Math.min(canvas.width, canvas.height), canvas.width, canvas.height);
+    drawScreen();
+}
 
-function load() {
-    // code there executes on webpage load
+const renderScreen = (origin, transformedRotation) => {
+    triangles = [[{X:0, Y:0, Z:0}, {X:0, Y:0, Z:100}, {X:100, Y:0, Z:0}]]
 
-    // initialise painter
-    canvas = new Object();
-    canvas.canvas = document.getElementById("mainCanvas");
-    canvas.width = (canvas.canvas.width = window.innerWidth);
-    canvas.height = (canvas.canvas.height = window.innerHeight);
-    paint = canvas.canvas.getContext("2d");
-    FOV = 100;
-    light = 100;
-    maxViewDistance = 1000;
-    position = {X: 50, Y: 50, Z: -100}
-    rotation = {A: 0, B: -20}
+    // project all triangles points
+    let transformedTriangles = []
+    triangles.forEach(localTriangle => {
+        transformedTriangles.push({transformedTriangle: [
+            // transform triangle points and save it
+            projectPoint(localTriangle[0], origin, transformedRotation),
+            projectPoint(localTriangle[1], origin, transformedRotation),
+            projectPoint(localTriangle[2], origin, transformedRotation),
+        ]});
 
-    // fill the screen
-    screenInit(240, 180);
+        transformedTriangles[transformedTriangles.length - 1].triangle2d = [
+            // project transformed triangle points on 2d screen
+            {X: transformedTriangles[transformedTriangles.length - 1].transformedTriangle[0].X / Math.max(0, transformedTriangles[transformedTriangles.length - 1].transformedTriangle[0].Z * FOV),
+             Y: transformedTriangles[transformedTriangles.length - 1].transformedTriangle[0].Y / Math.max(0, transformedTriangles[transformedTriangles.length - 1].transformedTriangle[0].Z * FOV)},
+            {X: transformedTriangles[transformedTriangles.length - 1].transformedTriangle[1].X / Math.max(0, transformedTriangles[transformedTriangles.length - 1].transformedTriangle[1].Z * FOV),
+             Y: transformedTriangles[transformedTriangles.length - 1].transformedTriangle[1].Y / Math.max(0, transformedTriangles[transformedTriangles.length - 1].transformedTriangle[1].Z * FOV)},
+            {X: transformedTriangles[transformedTriangles.length - 1].transformedTriangle[2].X / Math.max(0, transformedTriangles[transformedTriangles.length - 1].transformedTriangle[2].Z * FOV),
+             Y: transformedTriangles[transformedTriangles.length - 1].transformedTriangle[2].Y / Math.max(0, transformedTriangles[transformedTriangles.length - 1].transformedTriangle[2].Z * FOV)}
+        ]
+    });
+
+    let pixelCounter = 0
+    screen.forEach(pixel => {
+        transformedTriangles.forEach(localTriangle => {
+            getPixelColor(pixel, localTriangle, pixelCounter)
+        });
+        pixelCounter++;
+    });
+}
+
+const projectPoint = (point, origin, transformedRotation) => {
+    let rotatedX, rotatedY, rotatedZ;
+    rotatedX = (origin.X - point.X) * transformedRotation.cosA - (origin.Z - point.Z) * transformedRotation.sinA;
+    rotatedZ = (origin.Z - point.Z) * transformedRotation.cosA + (origin.X - point.X) * transformedRotation.sinA;
+    rotatedY = rotatedZ * transformedRotation.sinB + (origin.X - point.X) * transformedRotation.cosB;
+    rotatedZ = rotatedZ * transformedRotation.cosB + (origin.X - point.X) * transformedRotation.sinB;
+    return {X: rotatedX, Y: rotatedY, Z: rotatedZ}
+}
+
+const getPixelColor = (pixel, localTriangle, pixelCounter) => {
+    screen[pixelCounter].color = "rgb(0 0 0)"
+    if (trianglePointIntersection(pixel, localTriangle.triangle2d)) {
+        screen[pixelCounter].color = "rgb(255 255 255)"
+    }
+}
+
+const trianglePointIntersection = (pixel, triangle) => {
     
-}
-
-function tick() {
-    // code there execute on webpage tick
-
-    // render triangle to pixels
-    shapes = new Array;
-
-    initTriangle([{X:0, Y:0, Z:0}, {X:0, Y:0, Z:100}, {X:100, Y:0, Z:0}], 
-        ["bricks", true], position, normaliseRotation(rotation));
-    initTriangle([{X:100, Y:0, Z:100}, {X:0, Y:0, Z:100}, {X:100, Y:0, Z:0}], 
-        ["bricks", false], position, normaliseRotation(rotation));
-    shapes.sort((a, b) => {return a[3] - b[3]});
-    initScreenColors();
-    screenDraw();
-
-}
-
-
-
-function initTriangle(points, texture, position, direction) {
-    // Points - array with all used points in the Triangle
-    shapes[shapes.length] = new Array
-    let trianglePoints = new Array
-    points.forEach(element => {
-        
-        // rotate points
-        let rotatedX = (element.Z - position.Z) * Math.sin(-direction.A) + (element.X - position.X) * Math.cos(direction.A);
-        let rotatedZ = (element.Z - position.Z) * Math.cos(direction.A) - (element.X - position.X) * Math.sin(-direction.A);
-        let rotatedY = rotatedZ * Math.sin(direction.B) + (element.Y + position.Y) * Math.cos(direction.B);
-        rotatedZ = rotatedZ * Math.cos(direction.B) - (element.Y + position.Y) * Math.sin(direction.B);
-        
-        // write points
-        shapes[shapes.length - 1].push({X: rotatedX/rotatedZ * FOV, Y: rotatedY/rotatedZ * FOV, distance: rotatedZ});
-        trianglePoints.push({X: rotatedX, Y: rotatedY, Z: rotatedZ})
-        
-    });
-
-    // distance to triangle based on 3 points
-    shapes[shapes.length - 1].push((shapes[shapes.length - 1][0].distance + shapes[shapes.length - 1][1].distance + shapes[shapes.length - 1][2].distance) / 3)
-    shapes[shapes.length - 1].push(texture)
-    shapes[shapes.length - 1].push(trianglePoints)
-    shapes[shapes.length - 1].push({
-        minX: Math.min(shapes[shapes.length - 1][0].X, shapes[shapes.length - 1][1].X, shapes[shapes.length - 1][2].X),
-        minY: Math.min(shapes[shapes.length - 1][0].Y, shapes[shapes.length - 1][1].Y, shapes[shapes.length - 1][2].Y),
-        maxX: Math.max(shapes[shapes.length - 1][0].X, shapes[shapes.length - 1][1].X, shapes[shapes.length - 1][2].X),
-        maxY: Math.max(shapes[shapes.length - 1][0].Y, shapes[shapes.length - 1][1].Y, shapes[shapes.length - 1][2].Y)
-    })
-}
-
-
-
-// calculation of distance to point of ray and plane intersection
-function raycast(points, ray) {  
-    let Pn = normaliseVector(crossProduct(vecSub(points[1], points[0]), vecSub(points[2], points[0])));
-    let Vd = dotProduct(Pn, ray[1])
-    if (Math.abs(Vd) < 0.0001) {return false} // ray is parallel to the plane
-    let t = - dotProduct(Pn, vecSub(ray[0], points[0])) / Vd
-    if (t < 0) {return false} // intersection is behind player
-    return t;
-}
-
-function triangle(element, points, pixelCounter) {
-    if ((element.X < points[6].minX) || (element.X > points[6].maxX) || (element.Y < points[6].minY) || (element.Y > points[6].maxY)) {return false}
-
     // define does point intersect with triangle or not
-    let d1 = sign(element, points[0], points[1]);
-    let d2 = sign(element, points[1], points[2]);
-    let d3 = sign(element, points[2], points[0]);
+    let d1 = sign(pixel, triangle[0], triangle[1]);
+    let d2 = sign(pixel, triangle[1], triangle[2]);
+    let d3 = sign(pixel, triangle[2], triangle[0]);
     let has_neg = (d1 <= 0) || (d2 <= 0) || (d3 <= 0);
     let has_pos = (d1 >= 0) || (d2 >= 0) || (d3 >= 0);
     
     if (has_neg && has_pos) {return false}
-
-    // raycast from given pixel to given triangle
-    let distance = raycast(points[5], [
-        {X: element.X / FOV, Y: element.Y / FOV, Z: 1}, 
-        {X: element.X * 2 / FOV, Y: element.Y * 2 / FOV, Z: 2}
-    ]);
-    
-    // return false if point is behind player
-    if (!distance) {return false}
-
-    // calculate colors based on point of intersection with triangle
-    let color = applyTexture(points[5], distance, points[4], element);
-    
-    // apply color to pixel
-    screen[pixelCounter].color = "rgb(" + color[0]+ " " + color[1] + " " + color[2]+ ")";
-}
-
-// calculate pixel color
-function initialisePixelColor(element, pixelCounter) {
-
-    // start with pure black screen
-    screen[pixelCounter].color = "rgb(0 0 0)";
-
-    // check if it intersect with any triangle
-    shapes.forEach(points => {
-        triangle(element, points, pixelCounter)
-    });
-}
-
-function applyTexture(points, distance, textureId, pixel) {
-
-    // calculate point of intersection of ray and 
-    let intersection = {
-        X: Math.round(pixel.X * distance / FOV * 2),
-        Y: Math.round(pixel.Y * distance / FOV * 2),
-        Z: distance * 2,
-    }
-
-    // calcutlate texture coordinates
-    let texture = getTexture(textureId[0]) 
-    let textureX = Math.round(perpendicularLength(points[0], points[1], intersection)) / magnitude(vecSub(points[1], points[0]))
-    let perpendicular = vecAdd(trianglePerpendicular(points[0], points[2], points[1]), points[0])
-    let textureY = Math.round(perpendicularLength(perpendicular, points[0], intersection)) / perpendicularLength(points[0], points[1], points[2])
-    if (textureId[1] == true) { 
-        textureX = Math.floor((1 - textureX) * texture[0].resolutionX);
-        textureY = Math.floor(textureY * texture[0].resolutionY) + 1;
-    } else {
-        let k = textureX
-        textureX = Math.floor(textureY * texture[0].resolutionX);
-        textureY = Math.floor((1 - k) * texture[0].resolutionY) + 1;
-    }
-
-    try {
-        return [
-            texture[0].colors[texture[textureY][textureX]][0] * Math.min(1 / distance * light, 1),
-            texture[0].colors[texture[textureY][textureX]][1] * Math.min(1 / distance * light, 1),
-            texture[0].colors[texture[textureY][textureX]][2] * Math.min(1 / distance * light, 1)
-        ]
-    } catch (error) {
-        return [0, 0, 0]
-    }
-}
-
-function initScreenColors() {
-    let pixelCounter = 0;
-    
-    // get color for every pixel
-    screen.forEach(element => {
-        initialisePixelColor(element, pixelCounter)
-        pixelCounter++;
-    });
+    return true
 }
