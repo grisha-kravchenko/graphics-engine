@@ -10,8 +10,9 @@ function graphics_Load() {
 
     // initialise constants and important variables
     FOV = 100
-    position = {X: 50, Y: 50, Z: -100}
-    rotation = {A: 160, B: -90}
+    light = 100000
+    position = {X: 0, Y: 0, Z: -500}
+    rotation = {A: 15, B: 0}
 }
 
 function graphics_Tick(fps) {
@@ -32,9 +33,9 @@ const initialiseScreen = (width, height, window, windowWidth, windowHeight) => {
                 Y: pixelY - height / 2,
                 screenX: pixelX * window / width + (windowWidth - window) / 2,
                 screenY: pixelY * window / height + (windowHeight - window) / 2,
-                sizeX: window / width + 1,
-                sizeY: window / height + 1,
-                color: "rgb(" + Math.random()*255 + " " + Math.random()*255 + " " + Math.random()*255 + ")"
+                sizeX: window / width + 2,
+                sizeY: window / height + 2,
+                color: "rgb(0 0 0)"
             })
         }
     }
@@ -57,7 +58,7 @@ const resize = () => {
 }
 
 const renderScreen = (origin, transformedRotation) => {
-    triangles = [[{X:0, Y:0, Z:0}, {X:0, Y:0, Z:100}, {X:100, Y:0, Z:0}]]
+    triangles = [[{X:-100, Y:-100, Z:100}, {X:-100, Y:100, Z:100}, {X:100, Y:-100, Z:100}]]
 
     // project all triangles points
     let transformedTriangles = []
@@ -71,18 +72,19 @@ const renderScreen = (origin, transformedRotation) => {
 
         transformedTriangles[transformedTriangles.length - 1].triangle2d = [
             // project transformed triangle points on 2d screen
-            {X: transformedTriangles[transformedTriangles.length - 1].transformedTriangle[0].X / Math.max(0, transformedTriangles[transformedTriangles.length - 1].transformedTriangle[0].Z * FOV),
-             Y: transformedTriangles[transformedTriangles.length - 1].transformedTriangle[0].Y / Math.max(0, transformedTriangles[transformedTriangles.length - 1].transformedTriangle[0].Z * FOV)},
-            {X: transformedTriangles[transformedTriangles.length - 1].transformedTriangle[1].X / Math.max(0, transformedTriangles[transformedTriangles.length - 1].transformedTriangle[1].Z * FOV),
-             Y: transformedTriangles[transformedTriangles.length - 1].transformedTriangle[1].Y / Math.max(0, transformedTriangles[transformedTriangles.length - 1].transformedTriangle[1].Z * FOV)},
-            {X: transformedTriangles[transformedTriangles.length - 1].transformedTriangle[2].X / Math.max(0, transformedTriangles[transformedTriangles.length - 1].transformedTriangle[2].Z * FOV),
-             Y: transformedTriangles[transformedTriangles.length - 1].transformedTriangle[2].Y / Math.max(0, transformedTriangles[transformedTriangles.length - 1].transformedTriangle[2].Z * FOV)}
+            {X: transformedTriangles[transformedTriangles.length - 1].transformedTriangle[0].X * FOV / Math.max(1, transformedTriangles[transformedTriangles.length - 1].transformedTriangle[0].Z),
+             Y: transformedTriangles[transformedTriangles.length - 1].transformedTriangle[0].Y * FOV / Math.max(1, transformedTriangles[transformedTriangles.length - 1].transformedTriangle[0].Z)},
+            {X: transformedTriangles[transformedTriangles.length - 1].transformedTriangle[1].X * FOV / Math.max(1, transformedTriangles[transformedTriangles.length - 1].transformedTriangle[1].Z),
+             Y: transformedTriangles[transformedTriangles.length - 1].transformedTriangle[1].Y * FOV / Math.max(1, transformedTriangles[transformedTriangles.length - 1].transformedTriangle[1].Z)},
+            {X: transformedTriangles[transformedTriangles.length - 1].transformedTriangle[2].X * FOV / Math.max(1, transformedTriangles[transformedTriangles.length - 1].transformedTriangle[2].Z),
+             Y: transformedTriangles[transformedTriangles.length - 1].transformedTriangle[2].Y * FOV / Math.max(1, transformedTriangles[transformedTriangles.length - 1].transformedTriangle[2].Z)}
         ]
-    });
+    }); 
 
     let pixelCounter = 0
     screen.forEach(pixel => {
         transformedTriangles.forEach(localTriangle => {
+            screen[pixelCounter].color = "rgb(0 0 0)"
             getPixelColor(pixel, localTriangle, pixelCounter)
         });
         pixelCounter++;
@@ -91,18 +93,20 @@ const renderScreen = (origin, transformedRotation) => {
 
 const projectPoint = (point, origin, transformedRotation) => {
     let rotatedX, rotatedY, rotatedZ;
-    rotatedX = (origin.X - point.X) * transformedRotation.cosA - (origin.Z - point.Z) * transformedRotation.sinA;
-    rotatedZ = (origin.Z - point.Z) * transformedRotation.cosA + (origin.X - point.X) * transformedRotation.sinA;
-    rotatedY = rotatedZ * transformedRotation.sinB + (origin.X - point.X) * transformedRotation.cosB;
-    rotatedZ = rotatedZ * transformedRotation.cosB + (origin.X - point.X) * transformedRotation.sinB;
+    rotatedX = (origin.Z - point.Z) * transformedRotation.sinA + (origin.X - point.X) * transformedRotation.cosA;
+    rotatedZ = (origin.Z - point.Z) * transformedRotation.cosA - (origin.X - point.X) * transformedRotation.sinA;
+    rotatedY = rotatedZ * transformedRotation.sinB + (origin.Y - point.Y) * transformedRotation.cosB;
+    rotatedZ = - rotatedZ * transformedRotation.cosB + (origin.Y - point.Y) * transformedRotation.sinB;
     return {X: rotatedX, Y: rotatedY, Z: rotatedZ}
 }
 
 const getPixelColor = (pixel, localTriangle, pixelCounter) => {
-    screen[pixelCounter].color = "rgb(0 0 0)"
-    if (trianglePointIntersection(pixel, localTriangle.triangle2d)) {
-        screen[pixelCounter].color = "rgb(255 255 255)"
-    }
+    if (!trianglePointIntersection(pixel, localTriangle.triangle2d)) { return }
+    let distance = distanceToPlane(localTriangle.transformedTriangle, [
+        {X: pixel.X, Y: pixel.Y, Z: 0},
+        {X: pixel.X * 2, Y: pixel.Y * 2, Z: 1}
+    ])
+    screen[pixelCounter].color = "rgb(" + light / distance + " " +  light / distance + " " + light / distance + ")"
 }
 
 const trianglePointIntersection = (pixel, triangle) => {
@@ -116,4 +120,15 @@ const trianglePointIntersection = (pixel, triangle) => {
     
     if (has_neg && has_pos) {return false}
     return true
+}
+
+const distanceToPlane = (triangle, vector) => {
+
+    // find a distance to a point of intersection of vector and triangle
+    let Pn = crossProduct(vecSub(triangle[1], triangle[0]), vecSub(triangle[2], triangle[0]));
+    let Vd = dotProduct(Pn, vector[1])
+    if (Math.abs(Vd) < 0.0001) {return false} // ray is parallel to the plane
+    let t = - dotProduct(Pn, vecSub(vector[0], triangle[0])) / Vd
+    if (t < 0) {return false} // intersection is behind player
+    return t;
 }
