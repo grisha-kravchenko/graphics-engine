@@ -96,13 +96,15 @@ class vector2 {
         transformRotation() {return {
             sinA: Math.sin(this.X * Math.PI / 180), 
             cosA: Math.cos(this.X * Math.PI / 180), 
-            sinB: Math.sin(this.Y * Math.PI / 180), 
+            sinB: Math.sin(-this.Y * Math.PI / 180), 
             cosB: Math.cos(this.Y * Math.PI / 180)
         }}
-
-        sign(p1, p2, p3) {
-            return (p1.X - p3.X) * (p2.Y - p3.Y) - (p2.X - p3.X) * (p1.Y - p3.Y)
-        }
 };
 
-export { vector2, vector3 };
+const vectorMath = new Object();
+
+vectorMath.sign = (p1, p2, p3) => {
+    return (p1.X - p3.X) * (p2.Y - p3.Y) - (p2.X - p3.X) * (p1.Y - p3.Y)
+}
+
+export { vector2, vector3 , vectorMath};

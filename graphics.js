@@ -1,6 +1,6 @@
 
 // basic math for 3d engine
-import { vector2, vector3 } from "./vectors.js";
+import { vector2, vector3, vectorMath } from "./vectors.js";
 
 // graphics object is used for global variables inside graphics.js script
 const graphics = new Object();
@@ -14,13 +14,12 @@ exports.Load = () => {
     graphics.canvas = document.getElementById("MainCanvas");
     graphics.ctx = graphics.canvas.getContext("2d");
     graphics.screen = new Array;
+    graphics.resolution = 50
     resize();
     window.onresize = resize;
-
     // initialise constants and important variables
     graphics.FOV = 100;
     graphics.light = 100000;
-    graphics.resolution = 50
     graphics.position = new vector3(0, 0, -600);
     graphics.rotation = new vector2(0, 0);
     graphics.triangles = [
@@ -28,13 +27,18 @@ exports.Load = () => {
     ]
 }
 
-exports.Tick = () => {
+exports.Tick = (time) => {
     renderScreen(graphics.position, graphics.rotation);
     drawScreen();
+    sleep(time).then(() => exports.Tick(time))
 }
 
 exports.changeLocals = (variable, value) => {
     graphics[variable] = value
+}
+
+const sleep = (ms) => {
+    return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 const resize = () => {
@@ -106,8 +110,6 @@ const renderScreen = (origin, rotation) => {
 const renderPixelLogic = (pixel, pixelCounter, triangle) => {
     // apply simple shader with texture
     // overwrite pixel colors
-    console.log(graphics.screen[pixelCounter - 1]);
-    console.log(triangle);
     graphics.screen[pixelCounter - 1].color = new vector3(0, 0, 0);
     if (trianglePointIntersection(pixel.pixelPos, triangle.lines2d)) {
         graphics.screen[pixelCounter - 1].color = new vector3(255, 255, 255);
@@ -118,9 +120,9 @@ const renderPixelLogic = (pixel, pixelCounter, triangle) => {
 const trianglePointIntersection = (point, lines) => {
     
     // define does point intersect with triangle or not
-    let d1 = sign(point, lines[0][0], lines[0][1]);
-    let d2 = sign(point, lines[1][0], lines[1][1]);
-    let d3 = sign(point, lines[2][0], lines[2][1]);
+    let d1 = vectorMath.sign(point, lines[0][0], lines[0][1]);
+    let d2 = vectorMath.sign(point, lines[1][0], lines[1][1]);
+    let d3 = vectorMath.sign(point, lines[2][0], lines[2][1]);
     let has_neg = (d1 <= 0) || (d2 <= 0) || (d3 <= 0);
     let has_pos = (d1 >= 0) || (d2 >= 0) || (d3 >= 0);
     
