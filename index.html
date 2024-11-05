@@ -3,9 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mineplex game!</title>
+    <title>Mineplex Game!</title>
+    <script src="vectors.js" type="module"></script>
     <script src="graphicsMath.js"></script>
     <script src="code.js"></script>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <!-- <script src="graphics.js" type="module"></script> -->
     <style>
         #MainCanvas {
             overflow-y: scroll;
@@ -23,10 +26,12 @@
 </head>
 <body>
     <canvas id="MainCanvas"></canvas>
-    <script>
+    <script type="module">
+        import { exports as graphics } from "./graphics.js";
         document.addEventListener("DOMContentLoaded", () => {
-            graphics_Load();
-            graphics_Tick(10);
+            console.log(graphics)
+            graphics.Load();
+            graphics.Tick(10);
         });
     </script>
 </body>
