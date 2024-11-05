@@ -94,14 +94,20 @@ class vector2 {
         }
 
         transformRotation() {return {
-            sinA: Math.sin(this.X * Math.PI / 180), 
+            sinA: Math.sin(-this.X * Math.PI / 180), 
             cosA: Math.cos(this.X * Math.PI / 180), 
             sinB: Math.sin(-this.Y * Math.PI / 180), 
             cosB: Math.cos(this.Y * Math.PI / 180)
         }}
 };
 
-const vectorMath = new Object();
+const vectorMath = {
+    subtract: (a, b) => { return a.subtract(b) },
+    add: (a, b) => { return a.add(b) },
+    multiply: (a, b) => { return a.multiply(b) },
+    dotProduct: (a, b) => { return a.dotProduct(b) },
+    crossProduct: (a, b) => { return a.crossProduct(b) }
+};
 
 vectorMath.sign = (p1, p2, p3) => {
     return (p1.X - p3.X) * (p2.Y - p3.Y) - (p2.X - p3.X) * (p1.Y - p3.Y)

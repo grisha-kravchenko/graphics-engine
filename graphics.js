@@ -14,17 +14,19 @@ exports.Load = () => {
     graphics.canvas = document.getElementById("MainCanvas");
     graphics.ctx = graphics.canvas.getContext("2d");
     graphics.screen = new Array;
-    graphics.resolution = 50
-    resize();
-    window.onresize = resize;
+
     // initialise constants and important variables
+    graphics.resolution = 50
     graphics.FOV = 100;
-    graphics.light = 100000;
-    graphics.position = new vector3(0, 0, -600);
+    graphics.light = 200;
+    graphics.position = new vector3(0, 0, 300);
     graphics.rotation = new vector2(0, 0);
     graphics.triangles = [
-        [new vector3(-100, -100, 100), new vector3(-100, 100, 100), new vector3(100, -100, 100)]
+        [new vector3(-100, -100, -100), new vector3(-100, 100, -100), new vector3(100, -100, -100)]
     ]
+
+    resize();
+    window.onresize = resize;
 }
 
 exports.Tick = (time) => {
@@ -47,8 +49,8 @@ const resize = () => {
     graphics.size = Math.min(window.innerWidth, window.innerHeight);
     graphics.canvas.width = graphics.size;
     graphics.canvas.height = graphics.size;
-    graphics.ctx.fillStyle = "rgb(255 255 255)";
-    graphics.ctx.fillRect(0, 0, graphics.size, graphics.canvas.width, graphics.canvas.height);
+    //graphics.ctx.fillStyle = "rgb(255 255 255)";
+    //graphics.ctx.fillRect(0, 0, graphics.size, graphics.canvas.width, graphics.canvas.height);
     initialiseScreen(graphics.resolution, graphics.resolution, graphics.size, graphics.size, graphics.size);
     drawScreen();
 }
@@ -60,7 +62,7 @@ const initialiseScreen = (width, height, window, windowWidth, windowHeight) => {
             graphics.screen.push({
                 pixelPos: new vector2(pixelX - width / 2, pixelY - height / 2),
                 screenPos: new vector2( pixelX * window / width + (windowWidth - window) / 2, pixelY * window / height + (windowHeight - window) / 2),
-                size: new vector2(window / width + 2, window / height + 2),
+                size: new vector2(window / width + 1, window / height + 1),
                 color: new vector3(0, 0, 0)
             })
         }
@@ -70,7 +72,7 @@ const initialiseScreen = (width, height, window, windowWidth, windowHeight) => {
 const drawScreen = () => {
     graphics.screen.forEach(pixel => {
         graphics.ctx.fillStyle = "rgb(" + pixel.color.X + " " + pixel.color.Y + " " + pixel.color.Z + ")"
-        graphics.ctx.fillRect(pixel.screenPos.X, pixel.screenPos.Y, pixel.screenPos.X + pixel.size.X, pixel.screenPos.Y + pixel.size.Y)
+        graphics.ctx.fillRect(pixel.screenPos.X, pixel.screenPos.Y, pixel.size.X, pixel.size.Y)
     });
 }
 
@@ -104,17 +106,20 @@ const renderScreen = (origin, rotation) => {
     let pixelCounter = 0;
     graphics.screen.forEach(pixel => {
         pixelCounter ++;
-        transformedTriangles.forEach( triangle => {renderPixelLogic(pixel, pixelCounter, triangle);})
+        transformedTriangles.forEach( triangle => {renderPixelLogic(pixel, pixelCounter, triangle)})
     });
 }
 const renderPixelLogic = (pixel, pixelCounter, triangle) => {
     // apply simple shader with texture
     // overwrite pixel colors
     graphics.screen[pixelCounter - 1].color = new vector3(0, 0, 0);
-    if (trianglePointIntersection(pixel.pixelPos, triangle.lines2d)) {
-        graphics.screen[pixelCounter - 1].color = new vector3(255, 255, 255);
+
+    if (!trianglePointIntersection(pixel.pixelPos, triangle.lines2d)) {
+        return
     }
-    
+
+    const intersectionDistance = distanceToPlane(triangle.points, [new vector3(pixel.pixelPos.X, pixel.pixelPos.Y, 0), new vector3(pixel.pixelPos.X * 2, pixel.pixelPos.Y * 2, 1)])
+    graphics.screen[pixelCounter - 1].color = new vector3(255 * graphics.light / intersectionDistance, 255 * graphics.light / intersectionDistance, 255 * graphics.light / intersectionDistance);
 }
 
 const trianglePointIntersection = (point, lines) => {
@@ -128,6 +133,14 @@ const trianglePointIntersection = (point, lines) => {
     
     if (has_neg && has_pos) {return false}
     return true
+}
+
+const distanceToPlane = (points, ray) => {  
+    const planeNormal = vectorMath.crossProduct(vectorMath.subtract(points[1], points[0]), vectorMath.subtract(points[2], points[0]));
+    const Vd = vectorMath.dotProduct(planeNormal, ray[1]);
+    let pointDistance = - vectorMath.dotProduct(planeNormal, vectorMath.subtract(ray[0], points[0])) / Vd;
+    if (pointDistance < 0) {return false}; // intersection is behind player
+    return pointDistance;
 }
 
 
