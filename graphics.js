@@ -17,10 +17,10 @@ exports.Load = () => {
 
     // initialise constants and important variables
     graphics.resolution = 50
-    graphics.FOV = 100;
+    graphics.FOV = 1;
     graphics.light = 200;
     graphics.position = new vector3(0, 0, 300);
-    graphics.rotation = new vector2(0, 0);
+    graphics.rotation = new vector2(0, 10);
     graphics.triangles = [
         [new vector3(-100, -100, -100), new vector3(-100, 100, -100), new vector3(100, -100, -100)]
     ]
@@ -92,13 +92,14 @@ const renderScreen = (origin, rotation) => {
         transformedTriangles.push({
             points: projectedPoints,
             lines2d: [
-                [new vector2(projectedPoints[0].X * graphics.resolution / projectedPoints[0].Z, projectedPoints[0].Y / projectedPoints[0].Z * graphics.resolution),
-                    new vector2(projectedPoints[1].X * graphics.resolution / projectedPoints[1].Z, projectedPoints[1].Y / projectedPoints[1].Z * graphics.resolution)],
-                [new vector2(projectedPoints[1].X * graphics.resolution / projectedPoints[1].Z, projectedPoints[1].Y / projectedPoints[1].Z * graphics.resolution),
-                    new vector2(projectedPoints[2].X * graphics.resolution / projectedPoints[2].Z, projectedPoints[2].Y / projectedPoints[2].Z * graphics.resolution)],
-                [new vector2(projectedPoints[2].X * graphics.resolution / projectedPoints[2].Z, projectedPoints[2].Y / projectedPoints[2].Z * graphics.resolution),
-                    new vector2(projectedPoints[0].X * graphics.resolution / projectedPoints[0].Z, projectedPoints[0].Y / projectedPoints[0].Z * graphics.resolution)]
-            ]
+                [new vector2(projectedPoints[0].X * graphics.resolution * graphics.FOV / projectedPoints[0].Z, projectedPoints[0].Y / projectedPoints[0].Z * graphics.resolution * graphics.FOV),
+                    new vector2(projectedPoints[1].X * graphics.resolution * graphics.FOV / projectedPoints[1].Z, projectedPoints[1].Y / projectedPoints[1].Z * graphics.resolution * graphics.FOV)],
+                [new vector2(projectedPoints[1].X * graphics.resolution * graphics.FOV / projectedPoints[1].Z, projectedPoints[1].Y / projectedPoints[1].Z * graphics.resolution * graphics.FOV),
+                    new vector2(projectedPoints[2].X * graphics.resolution * graphics.FOV / projectedPoints[2].Z, projectedPoints[2].Y / projectedPoints[2].Z * graphics.resolution * graphics.FOV)],
+                [new vector2(projectedPoints[2].X * graphics.resolution * graphics.FOV / projectedPoints[2].Z, projectedPoints[2].Y / projectedPoints[2].Z * graphics.resolution * graphics.FOV),
+                    new vector2(projectedPoints[0].X * graphics.resolution * graphics.FOV / projectedPoints[0].Z, projectedPoints[0].Y / projectedPoints[0].Z * graphics.resolution * graphics.FOV)]
+            ],
+            planeNormal: vectorMath.crossProduct(vectorMath.subtract(projectedPoints[1], projectedPoints[0]), vectorMath.subtract(projectedPoints[2], projectedPoints[0]))
         });
         
     });
@@ -114,11 +115,9 @@ const renderPixelLogic = (pixel, pixelCounter, triangle) => {
     // overwrite pixel colors
     graphics.screen[pixelCounter - 1].color = new vector3(0, 0, 0);
 
-    if (!trianglePointIntersection(pixel.pixelPos, triangle.lines2d)) {
-        return
-    }
+    if (!trianglePointIntersection(pixel.pixelPos, triangle.lines2d)) { return }
 
-    const intersectionDistance = distanceToPlane(triangle.points, [new vector3(pixel.pixelPos.X, pixel.pixelPos.Y, 0), new vector3(pixel.pixelPos.X * 2, pixel.pixelPos.Y * 2, 1)])
+    const intersectionDistance = distanceToPlane(triangle.points[0], [new vector3(pixel.pixelPos.X, pixel.pixelPos.Y, 0), new vector3(pixel.pixelPos.X * 2, pixel.pixelPos.Y * 2, 1)], triangle.planeNormal)
     graphics.screen[pixelCounter - 1].color = new vector3(255 * graphics.light / intersectionDistance, 255 * graphics.light / intersectionDistance, 255 * graphics.light / intersectionDistance);
 }
 
@@ -135,10 +134,9 @@ const trianglePointIntersection = (point, lines) => {
     return true
 }
 
-const distanceToPlane = (points, ray) => {  
-    const planeNormal = vectorMath.crossProduct(vectorMath.subtract(points[1], points[0]), vectorMath.subtract(points[2], points[0]));
-    const Vd = vectorMath.dotProduct(planeNormal, ray[1]);
-    let pointDistance = - vectorMath.dotProduct(planeNormal, vectorMath.subtract(ray[0], points[0])) / Vd;
+const distanceToPlane = (planeOrigin, ray, planeNormal) => {  
+    const vectorDirection = vectorMath.dotProduct(planeNormal, ray[1]);
+    let pointDistance = - vectorMath.dotProduct(planeNormal, vectorMath.subtract(ray[0], planeOrigin)) / vectorDirection;
     if (pointDistance < 0) {return false}; // intersection is behind player
     return pointDistance;
 }
