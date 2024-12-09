@@ -3,20 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-    <script src="textures.js"></script>
-    <script src="graphics-math.js"></script>
-    <script src="physics.js"></script>
-    <script src="code.js"></script>
+    <title>Mineplex Game!</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <style>
+        #MainCanvas {
+            overflow-y: scroll;
+            overflow-x: scroll;
+            padding: 0;
+            margin: auto;
+            display: block;
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+    </style>
 </head>
 <body>
-    <canvas id="mainCanvas" style="overflow-y: scroll; top: 0; right: 0; height: 100%; position: fixed;"></canvas>
-    <script>
-        document.addEventListener("DOMContentLoaded", load);
-        load();
-        physicsLoad();
-        physicsTick(25);
-        tickInit(1000/30);
+    <canvas id="MainCanvas"></canvas>
+    <script type="module">
+        import { exports as graphics } from "./graphics.js";
+        document.addEventListener("DOMContentLoaded", () => {
+            console.log(graphics)
+            graphics.Load();
+            graphics.Tick(100);
+        });
     </script>
 </body>
 </html>
